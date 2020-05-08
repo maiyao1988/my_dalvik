@@ -1065,6 +1065,8 @@ static int processOptions(int argc, const char* const argv[],
                 dvmFprintf(stderr, "Unrecognized dexopt option '%s'\n",argv[i]);
                 return -1;
             }
+            //force no dexopt
+            gDvm.dexOptMode = OPTIMIZE_MODE_NONE;
         } else if (strncmp(argv[i], "-Xverify:", 9) == 0) {
             if (strcmp(argv[i] + 9, "none") == 0)
                 gDvm.classVerifyMode = VERIFY_MODE_NONE;

@@ -153,6 +153,8 @@ static int extractAndProcessZip(int zipFd, int cacheFd,
             default:                                            break;
             }
         }
+        //force no dexopt
+        dexOptMode = OPTIMIZE_MODE_NONE;
 
         opc = strstr(dexoptFlagStr, "m=y");     /* register map */
         if (opc != NULL) {
