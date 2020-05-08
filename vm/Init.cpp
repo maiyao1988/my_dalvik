@@ -1379,13 +1379,12 @@ private:
  *
  * Returns 0 on success.
  */
+
 std::string dvmStartup(int argc, const char* const argv[],
         bool ignoreUnrecognized, JNIEnv* pEnv)
 {
     ScopedShutdown scopedShutdown;
-
     assert(gDvm.initializing);
-
     ALOGV("VM init args (%d):", argc);
     for (int i = 0; i < argc; i++) {
         ALOGV("  %d: '%s'", i, argv[i]);

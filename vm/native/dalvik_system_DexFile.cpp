@@ -334,37 +334,6 @@ static void Dalvik_dalvik_system_DexFile_closeDexFile(const u4* args,
 
 #include <dlfcn.h>
 
-/*
-static void _define_init_all_class(DvmDex *pDvmDex, Object *loader) {
-    DexFile *dex = pDvmDex->pDexFile;
-    int classNum = dex->pHeader->classDefsSize;
-    static const char *ignore = "Landroid";
-    static int len = strlen(ignore);
-    for (int i = 0; i < classNum; ++i) {
-        const DexClassDef *classDef = dexGetClassDef(dex, i);
-        const char *desp = dexGetClassDescriptor(dex, classDef); 
-
-        if(strncmp(desp, ignore, len) == 0||!classDef->classDataOff)
-        {
-            //ignore system class
-            continue;
-        }
-        ALOGI("defining %s", desp);
-        ClassObject *clsObj = dvmDefineClass(pDvmDex, desp, loader);
-
-        if (!clsObj)
-            continue;
-
-        if (!dvmIsClassInitialized(clsObj)) {
-            ALOGI("init %s", desp);
-            dvmInitClass(clsObj); 
-            dvmCheckException();
-        }
-
-    }
-}
-*/
-
 static void *s_handle = 0;
 /*
  * private static Class defineClassNative(String name, ClassLoader loader,

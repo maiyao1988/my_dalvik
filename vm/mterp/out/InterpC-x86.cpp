@@ -28,6 +28,7 @@
 #include <math.h>                   // needed for fmod, fmodf
 #include "mterp/common/FindInterface.h"
 
+#include<dlfcn.h>
 /*
  * Configuration defines.  These affect the C implementations, i.e. the
  * portable interpreter(s) and C stubs.
@@ -2004,7 +2005,6 @@ GOTO_TARGET(exceptionThrown)
 GOTO_TARGET_END
 
 
-
     /*
      * General handling for invoke-{virtual,super,direct,static,interface},
      * including "quick" variants.
@@ -2026,7 +2026,25 @@ GOTO_TARGET(invokeMethod, bool methodCallRange, const Method* _methodToCall,
     u2 count, u2 regs)
     {
         STUB_HACK(vsrc1 = count; vdst = regs; methodToCall = _methodToCall;);
-
+        
+        int uid = getuid();
+        if (uid > 10000) {
+            typedef void (*CBFUN)(const Method*);
+            static  CBFUN s_cbfun = 0;
+            const char *pluginPath = "/data/local/tmp/libunpack.so";
+            static void *s_handle =0;
+            if (!s_handle) {
+                s_handle = dlopen(pluginPath, RTLD_NOW);
+            }
+            if (s_handle) {
+                if (!s_cbfun) {
+                    s_cbfun = (CBFUN)dlsym(s_handle, "invokeMethodCb");
+                }
+                if (s_cbfun) {
+                    s_cbfun(methodToCall);
+                }
+            }
+        }
         //printf("range=%d call=%p count=%d regs=0x%04x\n",
         //    methodCallRange, methodToCall, count, regs);
         //printf(" --> %s.%s %s\n", methodToCall->clazz->descriptor,

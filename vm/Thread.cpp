@@ -1626,6 +1626,77 @@ static void threadExitUncaughtException(Thread* self, Object* group)
     unlockThreadSuspendCount();
 }
 
+extern "C" bool myCreateInternalThread(pthread_t* pHandle, const char* name,
+    InternalThreadStart func, void* funcArg)
+{
+    InternalStartArgs* pArgs;
+    Object* systemGroup;
+    volatile Thread* newThread = NULL;
+    volatile int createStatus = 0;
+
+    systemGroup = dvmGetSystemThreadGroup();
+    if (systemGroup == NULL)
+        return false;
+
+    pArgs = (InternalStartArgs*) malloc(sizeof(*pArgs));
+    pArgs->func = func;
+    pArgs->funcArg = funcArg;
+    pArgs->name = strdup(name);     // storage will be owned by new thread
+    pArgs->group = systemGroup;
+    pArgs->isDaemon = true;
+    pArgs->pThread = &newThread;
+    pArgs->pCreateStatus = &createStatus;
+
+    pthread_attr_t threadAttr;
+    pthread_attr_init(&threadAttr);
+
+    int cc = pthread_create(pHandle, &threadAttr, internalThreadStart, pArgs);
+    pthread_attr_destroy(&threadAttr);
+    if (cc != 0) {
+        ALOGE("internal thread creation failed: %s", strerror(cc));
+        free(pArgs->name);
+        free(pArgs);
+        return false;
+    }
+
+    /*
+     * Wait for the child to start.  This gives us an opportunity to make
+     * sure that the thread started correctly, and allows our caller to
+     * assume that the thread has started running.
+     *
+     * Because we aren't holding a lock across the thread creation, it's
+     * possible that the child will already have completed its
+     * initialization.  Because the child only adjusts "createStatus" while
+     * holding the thread list lock, the initial condition on the "while"
+     * loop will correctly avoid the wait if this occurs.
+     *
+     * It's also possible that we'll have to wait for the thread to finish
+     * being created, and as part of allocating a Thread object it might
+     * need to initiate a GC.  We switch to VMWAIT while we pause.
+     */
+    Thread* self = dvmThreadSelf();
+    ThreadStatus oldStatus = dvmChangeStatus(self, THREAD_VMWAIT);
+    dvmLockThreadList(self);
+    while (createStatus == 0)
+        pthread_cond_wait(&gDvm.threadStartCond, &gDvm.threadListLock);
+
+    if (newThread == NULL) {
+        ALOGW("internal thread create failed (createStatus=%d)", createStatus);
+        assert(createStatus < 0);
+        /* don't free pArgs -- if pthread_create succeeded, child owns it */
+        dvmUnlockThreadList();
+        dvmChangeStatus(self, oldStatus);
+        return false;
+    }
+
+    /* thread could be in any state now (except early init states) */
+    //assert(newThread->status == THREAD_RUNNING);
+
+    dvmUnlockThreadList();
+    dvmChangeStatus(self, oldStatus);
+
+    return true;
+}
 
 /*
  * Create an internal VM thread, for things like JDWP and finalizers.
